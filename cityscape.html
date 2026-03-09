@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>c i t y s c a p e</title>
+<style>
+  body {
+    margin: 0;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  canvas {
+    border: 1px solid #000;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas" width="700" height="700"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+/* ===============================
+   CONTROLLO DURATA ANIMAZIONE
+   =============================== */
+const ANIMATION_DURATION = 30000; // 30 secondi
+/* =============================== */
+
+const startTime = performance.now();
+
+// proporzioni
+const SKY_RATIO = 0.6;
+const SKY_HEIGHT = H * SKY_RATIO;
+const LAND_Y = SKY_HEIGHT;
+
+/* ===============================
+   NUVOLE DIVISIONISTE
+   =============================== */
+const DOT_RADIUS = 0.8;
+const DOTS_PER_FRAME = 150;
+
+function drawDot(x, y, alpha) {
+  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+  ctx.beginPath();
+  ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* ===============================
+   SOLE / ALONE (più piccolo)
+   =============================== */
+const HALO_START = 0.7;
+
+function drawHalo(progress) {
+  const intensity = Math.max(0, (progress - HALO_START) / (1 - HALO_START));
+  const radius = 35 + intensity * 70;
+
+  const grad = ctx.createRadialGradient(
+    W * 0.82, H * 0.18, 6,
+    W * 0.82, H * 0.18, radius
+  );
+
+  grad.addColorStop(0, `rgba(255,255,255,${0.22 * intensity})`);
+  grad.addColorStop(0.5, `rgba(255,255,255,${0.12 * intensity})`);
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(W * 0.82, H * 0.18, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* ===============================
+   CITTÀ (stile Klee, irregolare, colorata)
+   =============================== */
+function drawCity() {
+  const palette = [
+    "#f4a261", "#e76f51", "#2a9d8f",
+    "#264653", "#e9c46a", "#8ab17d",
+    "#f1faee", "#d62828", "#f77f00"
+  ];
+
+  let y = H ;
+
+  while (y > LAND_Y + 20) {
+    let x = Math.random() * 10;
+
+    while (x < W - 20) {
+      const w = 8 + Math.random() * 16;
+      const h = 20 + Math.random() * 60;
+      const tilt = (Math.random() - 0.5) * 0.08;
+
+      ctx.save();
+      ctx.translate(x + w / 2, y);
+      ctx.rotate(tilt);
+      ctx.translate(-(x + w / 2), -y);
+
+      // Scegli colore corpo e tetto
+      const bodyColor = palette[Math.floor(Math.random() * palette.length)];
+      const roofColor = palette[Math.floor(Math.random() * palette.length)];
+
+      // corpo casa
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(x, y - h, w, h);
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y - h, w, h);
+
+      // tetto fragile
+      ctx.beginPath();
+      ctx.moveTo(x, y - h);
+      ctx.lineTo(x + w / 2 + (Math.random() - 0.5) * 4, y - h - 6);
+      ctx.lineTo(x + w, y - h);
+      ctx.closePath();
+      ctx.fillStyle = roofColor;
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+
+      x += w + Math.random() * 6;
+    }
+
+    y -= 22 + Math.random() * 18;
+  }
+}
+
+/* ===============================
+   ANIMAZIONE
+   =============================== */
+function animate(time) {
+  const elapsed = time - startTime;
+  const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+
+  // cielo: nuvole divisioniste
+  const density = Math.pow(progress, 1.7);
+  const dots = Math.floor(DOTS_PER_FRAME * (0.4 + density));
+
+  for (let i = 0; i < dots; i++) {
+    const x = Math.random() * W;
+
+    const y =
+      SKY_HEIGHT -
+      density * SKY_HEIGHT +
+      (Math.random() - 0.5) * 140;
+
+    const alpha =
+      0.02 +
+      Math.random() * 0.05 +
+      density * 0.06;
+
+    if (y > 0 && y < SKY_HEIGHT) {
+      drawDot(x, y, alpha);
+    }
+  }
+
+  // sole piccolo
+  if (progress > HALO_START) {
+    drawHalo(progress);
+  }
+
+  // città **dopo il cielo**, così il cielo rimane dietro le case
+  drawCity();
+
+  if (progress < 1) {
+    requestAnimationFrame(animate);
+  }
+}
+
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>
